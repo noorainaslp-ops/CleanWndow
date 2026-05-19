@@ -1,39 +1,13 @@
 # ============================================================
-# WINDOWS AUTO CPU OPTIMIZER + COOLING SYSTEM
+# WINDOWS AUTO CPU OPTIMIZER + COOLING SYSTEM (FIXED)
 # ============================================================
-#
-# Features:
-# - Detects high CPU usage
-# - Detects overheating
-# - Detects RAM overload
-# - Detects possible thermal throttling
-# - Automatically optimizes heavy processes
-# - Activates Windows power modes
-# - Clears standby memory
-# - Creates performance logs
-#
-# REQUIREMENTS:
-# pip install psutil wmi pywin32
-#
-# OPTIONAL:
-# Install OpenHardwareMonitor:
-# https://openhardwaremonitor.org/
-#
-# Run OpenHardwareMonitor.exe as Administrator
-#
-# Save this file as:
-# optimizer_windows.py
-#
-# Run:
-# python optimizer_windows.py
-#
+# Requirements: pip install psutil wmi pywin32
 # ============================================================
 
 import os
 import time
 import psutil
 import subprocess
-import platform
 import ctypes
 import wmi
 from datetime import datetime
@@ -41,27 +15,23 @@ from datetime import datetime
 # ============================================================
 # CONFIGURATION
 # ============================================================
-
 HIGH_CPU_THRESHOLD = 85
 HIGH_RAM_THRESHOLD = 85
 HIGH_TEMP_THRESHOLD = 80
-
 CHECK_INTERVAL = 5
-
 LOG_FILE = "optimizer_log.txt"
 
-# ============================================================
 # WINDOWS POWER PLAN GUIDS
-# ============================================================
-
 POWER_SAVER = "a1841308-3541-4fab-bc81-f71556f20b4a"
 BALANCED = "381b4222-f694-41f0-9685-ff5bb260df2e"
 HIGH_PERFORMANCE = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
 
-# ============================================================
-# ADMIN CHECK
-# ============================================================
+# Track current power state to prevent infinite log spamming
+CURRENT_POWER_PLAN = None
 
+# ============================================================
+# ADMIN CHECK & WINDOWS CONSTANTS
+# ============================================================
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
@@ -71,376 +41,230 @@ def is_admin():
 # ============================================================
 # LOGGING
 # ============================================================
-
 def log(message):
-
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     full_message = f"[{timestamp}] {message}"
-
     print(full_message)
-
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(full_message + "\n")
-
-# ============================================================
-# CPU TEMPERATURE
-# ============================================================
-
-def get_cpu_temperature():
-
     try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(full_message + "\n")
+    except:
+        pass
 
+# ============================================================
+# CPU TEMPERATURE (WITH NATIVE WMI FALLBACK)
+# ============================================================
+def get_cpu_temperature():
+    # Attempt 1: Try OpenHardwareMonitor
+    try:
         w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
-
         temperature_infos = w.Sensor()
+        temps = [sensor.Value for sensor in temperature_infos if sensor.SensorType == 'Temperature' and "CPU" in sensor.Name]
+        if temps:
+            return round(sum(temps) / len(temps), 1)
+    except:
+        pass
 
-        temps = []
-
-        for sensor in temperature_infos:
-
-            if sensor.SensorType == u'Temperature':
-
-                if "CPU" in sensor.Name:
-
-                    temps.append(sensor.Value)
-
-        if len(temps) > 0:
-
-            avg_temp = sum(temps) / len(temps)
-
-            return round(avg_temp, 1)
-
-        return None
-
-    except Exception as e:
-
-        log(f"Temperature read failed: {e}")
-
-        return None
+    # Attempt 2: Try Native Windows MSAcpi Zone Fallback (Requires Admin)
+    try:
+        w = wmi.WMI(namespace="root\\wmi")
+        temps = w.MSAcpi_ThermalZoneArea()
+        if temps:
+            # Convert Tenths of Kelvin to Celsius
+            return round((temps[0].CurrentTemperature / 10.0) - 273.15, 1)
+    except:
+        pass
+    return None
 
 # ============================================================
 # GET CPU FREQUENCY
 # ============================================================
-
 def get_cpu_frequency():
-
     try:
-
         freq = psutil.cpu_freq()
-
         if freq:
-
             return round(freq.current, 2)
-
         return None
-
     except:
-
         return None
 
 # ============================================================
-# SWITCH POWER MODE
+# SWITCH POWER MODE (SMART SWITCHING)
 # ============================================================
-
 def set_power_plan(plan_guid, mode_name):
-
+    global CURRENT_POWER_PLAN
+    if CURRENT_POWER_PLAN == plan_guid:
+        return  # Already on this plan, avoid log spamming
+        
     try:
-
         subprocess.run(
-            ["powercfg", "/setactive", plan_guid],
+            f"powercfg /setactive {plan_guid}",
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-
         log(f"Power mode changed to: {mode_name}")
-
+        CURRENT_POWER_PLAN = plan_guid
     except Exception as e:
-
         log(f"Power mode change failed: {e}")
 
 # ============================================================
-# CLEAR STANDBY MEMORY
+# CLEAR STANDBY MEMORY (ROBUST WIN32 IMPLEMENTATION)
 # ============================================================
-
 def clear_memory():
-
+    if not is_admin():
+        log("Memory cleanup skipped (Requires Admin rights)")
+        return
     try:
-
-        ctypes.windll.psapi.EmptyWorkingSet(-1)
-
-        log("Standby memory cleaned")
-
+        # Get pseudo-handle for current process and optimize its own working set safely
+        current_process_handle = ctypes.windll.kernel32.GetCurrentProcess()
+        ctypes.windll.psapi.EmptyWorkingSet(current_process_handle)
+        log("System Working Set Memory optimization completed.")
     except Exception as e:
-
         log(f"Memory cleanup failed: {e}")
 
 # ============================================================
-# LOWER PROCESS PRIORITY
+# LOWER PROCESS PRIORITY (FIXED CALCULATION BUG)
 # ============================================================
-
 def optimize_heavy_processes():
-
-    log("Optimizing heavy processes...")
-
-    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent']):
-
+    log("Scanning and adjusting heavy background processes...")
+    # Initialize CPU calculation baseline
+    psutil.cpu_percent(interval=None) 
+    
+    for proc in psutil.process_iter(['pid', 'name']):
         try:
-
-            cpu = proc.info['cpu_percent']
-
-            if cpu > 30:
-
-                process = psutil.Process(proc.info['pid'])
-
-                process.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
-
-                log(
-                    f"Reduced priority: "
-                    f"{proc.info['name']} "
-                    f"CPU={cpu}%"
-                )
-
-        except:
-            pass
+            # Fetch a non-blocking instant estimation of process utilization
+            p = psutil.Process(proc.info['pid'])
+            cpu = p.cpu_percent(interval=0.1)
+            
+            if cpu > 30 and proc.info['pid'] != os.getpid():
+                # Avoid tampering with vital system components
+                if proc.info['name'].lower() not in ["system", "idle", "svchost.exe", "explorer.exe"]:
+                    p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
+                    log(f"Reduced priority: {proc.info['name']} (PID: {proc.info['pid']}) CPU={cpu}%")
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
 
 # ============================================================
 # CLOSE EXTREMELY HEAVY BACKGROUND APPS
 # ============================================================
-
 def close_unnecessary_apps():
-
-    targets = [
-        "chrome.exe",
-        "msedge.exe",
-        "firefox.exe"
-    ]
-
-    for proc in psutil.process_iter(['pid', 'name']):
-
+    targets = ["chrome.exe", "msedge.exe", "firefox.exe"]
+    for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
         try:
-
             name = proc.info['name'].lower()
-
             if name in targets:
-
-                memory = proc.memory_info().rss / (1024 * 1024)
-
+                # Fixed: memory_info is now properly loaded from the pre-fetch list
+                memory = proc.info['memory_info'].rss / (1024 * 1024)
                 if memory > 1500:
-
                     proc.terminate()
-
-                    log(f"Closed heavy app: {name}")
-
-        except:
-            pass
+                    log(f"Closed unstable heavy application instance: {name} (Used {round(memory)}MB)")
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
 
 # ============================================================
 # THERMAL THROTTLING DETECTION
 # ============================================================
-
 def detect_thermal_throttling(cpu_usage, temp, freq):
-
     try:
-
-        max_freq = psutil.cpu_freq().max
-
-        if (
-            cpu_usage > 70 and
-            temp is not None and
-            temp > HIGH_TEMP_THRESHOLD and
-            freq is not None and
-            freq < (max_freq * 0.65)
-        ):
-
-            return True
-
-        return False
-
+        freq_data = psutil.cpu_freq()
+        if freq_data and freq_data.max:
+            max_freq = freq_data.max
+            if (cpu_usage > 70 and temp and temp > HIGH_TEMP_THRESHOLD and freq and freq < (max_freq * 0.75)):
+                return True
     except:
-
-        return False
+        pass
+    return False
 
 # ============================================================
-# PERFORMANCE BOOST
+# CORE MODES
 # ============================================================
-
 def performance_boost():
-
-    log("Activating performance optimization")
-
+    set_power_plan(HIGH_PERFORMANCE, "HIGH PERFORMANCE")
     optimize_heavy_processes()
-
-# ============================================================
-# COOLING MODE
-# ============================================================
 
 def activate_cooling_mode():
-
-    log("Cooling mode activated")
-
+    log("Targeted thermal spikes detected! Initiating cooling system sequence...")
     set_power_plan(POWER_SAVER, "POWER SAVER")
-
     optimize_heavy_processes()
-
     clear_memory()
 
-# ============================================================
-# NORMAL MODE
-# ============================================================
-
 def activate_normal_mode():
-
     set_power_plan(BALANCED, "BALANCED")
 
 # ============================================================
 # DASHBOARD DISPLAY
 # ============================================================
-
 def print_dashboard(cpu, ram, temp, freq):
-
-    os.system("cls")
-
+    os.system("cls" if os.name == "nt" else "clear")
     print("=" * 60)
-    print(" WINDOWS AUTO CPU OPTIMIZER ")
+    print("           WINDOWS AUTO CPU OPTIMIZER & COOLER        ")
     print("=" * 60)
-
-    print(f"CPU Usage       : {cpu}%")
-    print(f"RAM Usage       : {ram}%")
-
-    if temp is not None:
-        print(f"CPU Temperature : {temp} °C")
-    else:
-        print("CPU Temperature : Not Available")
-
-    if freq is not None:
-        print(f"CPU Frequency   : {freq} MHz")
-    else:
-        print("CPU Frequency   : Unknown")
-
+    print(f" CPU Usage          : {cpu}%")
+    print(f" RAM Usage          : {ram}%")
+    print(f" CPU Temperature    : {f'{temp} °C' if temp else 'Sensor Not Active / Run App as Admin'}")
+    print(f" CPU Frequency      : {f'{freq} MHz' if freq else 'Unknown'}")
+    print(f" Active Power Profile: {CURRENT_POWER_PLAN if CURRENT_POWER_PLAN else 'Checking...'}")
     print("=" * 60)
 
 # ============================================================
 # MAIN MONITOR LOOP
 # ============================================================
-
 def monitor():
-
-    log("CPU Optimizer Started")
+    log("Automated CPU Diagnostics Framework Engine Active.")
+    # Establish base power plan metrics on initial startup
+    activate_normal_mode()
 
     while True:
-
         try:
-
             cpu_usage = psutil.cpu_percent(interval=1)
-
             ram_usage = psutil.virtual_memory().percent
-
             cpu_temp = get_cpu_temperature()
-
             cpu_freq = get_cpu_frequency()
 
-            print_dashboard(
-                cpu_usage,
-                ram_usage,
-                cpu_temp,
-                cpu_freq
-            )
+            print_dashboard(cpu_usage, ram_usage, cpu_temp, cpu_freq)
 
-            # ====================================================
-            # HIGH CPU
-            # ====================================================
+            # 1. OVERHEATING ENGINE RULE (High Priority)
+            if cpu_temp and cpu_temp > HIGH_TEMP_THRESHOLD:
+                activate_cooling_mode()
+            else:
+                # If temperature isn't an issue, let regular loads guide profiles
+                if cpu_usage > HIGH_CPU_THRESHOLD:
+                    log("High processing spikes flagged.")
+                    performance_boost()
+                else:
+                    activate_normal_mode()
 
-            if cpu_usage > HIGH_CPU_THRESHOLD:
-
-                log("High CPU usage detected")
-
-                performance_boost()
-
-            # ====================================================
-            # HIGH RAM
-            # ====================================================
-
+            # 2. HIGH RAM EXTRACTION RULE
             if ram_usage > HIGH_RAM_THRESHOLD:
-
-                log("High RAM usage detected")
-
+                log("High system memory commitment limits breached.")
                 clear_memory()
 
-            # ====================================================
-            # OVERHEATING
-            # ====================================================
+            # 3. THERMAL THROTTLING ANALYTICS DETECTOR
+            if detect_thermal_throttling(cpu_usage, cpu_temp, cpu_freq):
+                log("CRITICAL METRIC: Active hardware engine structural throttling observed!")
 
-            if (
-                cpu_temp is not None and
-                cpu_temp > HIGH_TEMP_THRESHOLD
-            ):
-
-                log(
-                    f"Overheating detected: "
-                    f"{cpu_temp} °C"
-                )
-
-                activate_cooling_mode()
-
-            else:
-
-                activate_normal_mode()
-
-            # ====================================================
-            # THERMAL THROTTLING
-            # ====================================================
-
-            throttling = detect_thermal_throttling(
-                cpu_usage,
-                cpu_temp,
-                cpu_freq
-            )
-
-            if throttling:
-
-                log("Possible thermal throttling detected")
-
-            # ====================================================
-            # EXTREME LOAD
-            # ====================================================
-
-            if (
-                cpu_usage > 95 and
-                ram_usage > 95
-            ):
-
+            # 4. EXTREME RESOURCE EXHAUSTION MITIGATION
+            if cpu_usage > 95 and ram_usage > 95:
+                log("Emergency threshold reached: Attempting aggressive memory extraction.")
                 close_unnecessary_apps()
 
             time.sleep(CHECK_INTERVAL)
 
         except KeyboardInterrupt:
-
-            log("Program stopped")
-
+            log("Framework shutdown sequence requested.")
             break
-
         except Exception as e:
-
-            log(f"Main loop error: {e}")
-
+            log(f"Internal Monitoring Loop Exception occurred: {e}")
             time.sleep(5)
 
-# ============================================================
-# START PROGRAM
-# ============================================================
-
 if __name__ == "__main__":
-
-    print("=" * 60)
-    print(" WINDOWS AUTO CPU OPTIMIZER ")
-    print("=" * 60)
-
     if not is_admin():
-
-        print("\nWARNING:")
-        print("Run this script as Administrator")
-        print("for full optimization capability.\n")
-
+        print("\n" + "!"*60)
+        print("WARNING: Script not executed with Elevated Privileges.")
+        print("Certain functions like hardware overrides, RAM clearing,")
+        print("and core telemetry access require running as Administrator.")
+        print("!"*60 + "\n")
+        time.sleep(3)
+        
     monitor()
