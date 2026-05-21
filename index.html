@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HearLink AAC - Hindi Aphasia Focus</title>
+    <title>HearLink AAC - Hindi SVG Aphasia System</title>
     <style>
         :root {
             --primary: #0284c7;
@@ -284,59 +284,59 @@
     </div>
 
 <script>
-    // --- TRANSLATED HINDI LEVERAGED VOCABULARY ARRAYS ---
+    // --- DICTIONARY SPECIFIED WITH SVG EXTENSIONS FOR GITHUB PAGES ---
     const aacData = {
         urgent: {
             label: "आपातकालीन",
             icon: "🚨",
             isUrgent: true,
             items: [
-                { id: "u1", label: "मदद", image: "idc_symbols/help.png", fallback: "🆘", speech: "मुझे मदद चाहिए।" },
-                { id: "u2", label: "दर्द", image: "idc_symbols/pain.png", fallback: "😭", speech: "मुझे दर्द हो रहा है।" },
-                { id: "u3", label: "शौचालय", image: "idc_symbols/washroom.png", fallback: "🚾", speech: "मुझे शौचालय जाना है।" },
-                { id: "u4", label: "दवा", image: "idc_symbols/medicine.png", fallback: "💊", speech: "मुझे दवा दे दीजिए।" },
-                { id: "u5", label: "पानी", image: "idc_symbols/water.png", fallback: "🥛", speech: "कृपया पानी चाहिए।" }
+                { id: "u1", label: "मदद", image: "idc_symbols/help.svg", fallback: "🆘", speech: "मुझे मदद चाहिए।" },
+                { id: "u2", label: "दर्द", image: "idc_symbols/pain.svg", fallback: "😭", speech: "मुझे दर्द हो रहा है।" },
+                { id: "u3", label: "शौचालय", image: "idc_symbols/washroom.svg", fallback: "🚾", speech: "मुझे शौचालय जाना है।" },
+                { id: "u4", label: "दवा", image: "idc_symbols/medicine.svg", fallback: "💊", speech: "मुझे दवा दे दीजिए।" },
+                { id: "u5", label: "पानी", image: "idc_symbols/water.svg", fallback: "🥛", speech: "कृपया पानी चाहिए।" }
             ]
         },
         basics: {
             label: "सामान्य",
             icon: "👋",
             items: [
-                { id: "b1", label: "हाँ", image: "idc_symbols/yes.png", fallback: "✅", speech: "हाँ।" },
-                { id: "b2", label: "नहीं", image: "idc_symbols/no.png", fallback: "❌", speech: "नहीं।" },
-                { id: "b3", label: "चाहिए", image: "idc_symbols/want.png", fallback: "🤲", speech: "चाहिए" },
-                { id: "b4", label: "धन्यवाद", image: "idc_symbols/thanks.png", fallback: "🙏", speech: "धन्यवाद।" },
-                { id: "b5", label: "रुकिए", image: "idc_symbols/stop.png", fallback: "🛑", speech: "रुक जाइए।" }
+                { id: "b1", label: "हाँ", image: "idc_symbols/yes.svg", fallback: "✅", speech: "हाँ।" },
+                { id: "b2", label: "नहीं", image: "idc_symbols/no.svg", fallback: "❌", speech: "नहीं।" },
+                { id: "b3", label: "चाहिए", image: "idc_symbols/want.svg", fallback: "🤲", speech: "चाहिए" },
+                { id: "b4", label: "धन्यवाद", image: "idc_symbols/thanks.svg", fallback: "🙏", speech: "धन्यवाद।" },
+                { id: "b5", label: "रुकिए", image: "idc_symbols/stop.svg", fallback: "🛑", speech: "रुक जाइए।" }
             ]
         },
         food: {
             label: "भोजन",
             icon: "🍛",
             items: [
-                { id: "f1", label: "रोटी", image: "idc_symbols/roti.png", fallback: "🫓", speech: "रोटी" },
-                { id: "f2", label: "चावल", image: "idc_symbols/rice.png", fallback: "🍚", speech: "चावल" },
-                { id: "f3", label: "चाय", image: "idc_symbols/tea.png", fallback: "☕", speech: "चाय पीना है" },
-                { id: "f4", label: "फल", image: "idc_symbols/fruit.png", fallback: "🍎", speech: "फल खाना है" }
+                { id: "f1", label: "रोटी", image: "idc_symbols/roti.svg", fallback: "🫓", speech: "रोटी" },
+                { id: "f2", label: "चावल", image: "idc_symbols/rice.svg", fallback: "🍚", speech: "चावल" },
+                { id: "f3", label: "चाय", image: "idc_symbols/tea.svg", fallback: "☕", speech: "चाय पीना है" },
+                { id: "f4", label: "फल", image: "idc_symbols/fruit.svg", fallback: "🍎", speech: "फल खाना है" }
             ]
         },
         actions: {
             label: "क्रियाएं",
             icon: "🏃",
             items: [
-                { id: "a1", label: "बैठना", image: "idc_symbols/sit.png", fallback: "🪑", speech: "बैठना है।" },
-                { id: "a2", label: "सोना", image: "idc_symbols/sleep.png", fallback: "🛌", speech: "मुझे आराम करना है।" },
-                { id: "a3", label: "टहलना", image: "idc_symbols/walk.png", fallback: "🚶", speech: "मुझे टहलने जाना है।" },
-                { id: "a4", label: "फ़ोन", image: "idc_symbols/call.png", fallback: "📞", speech: "कृपया फ़ोन मिलाइए।" }
+                { id: "a1", label: "बैठना", image: "idc_symbols/sit.svg", fallback: "🪑", speech: "बैठना है।" },
+                { id: "a2", label: "सोना", image: "idc_symbols/sleep.svg", fallback: "🛌", speech: "मुझे आराम करना है।" },
+                { id: "a3", label: "टहलना", image: "idc_symbols/walk.svg", fallback: "🚶", speech: "मुझे टहलने जाना है।" },
+                { id: "a4", label: "फ़ोन", image: "idc_symbols/call.svg", fallback: "📞", speech: "कृपया फ़ोन मिलाइए।" }
             ]
         },
         feelings: {
             label: "भावनाएं",
             icon: "🧠",
             items: [
-                { id: "e1", label: "खुश", image: "idc_symbols/happy.png", fallback: "😊", speech: "मैं खुश हूँ।" },
-                { id: "e2", label: "उदाcontext", image: "idc_symbols/sad.png", fallback: "😢", speech: "मुझे अच्छा नहीं लग रहा।" },
-                { id: "e3", label: "गर्मी", image: "idc_symbols/hot.png", fallback: "🥵", speech: "गर्मी लग रही है।" },
-                { id: "e4", label: "ठंड", image: "idc_symbols/cold.png", fallback: "🥶", speech: "ठंड लग रही है।" }
+                { id: "e1", label: "खुश", image: "idc_symbols/happy.svg", fallback: "😊", speech: "मैं खुश हूँ।" },
+                { id: "e2", label: "उदास", image: "idc_symbols/sad.svg", fallback: "😢", speech: "मुझे अच्छा नहीं लग रहा।" },
+                { id: "e3", label: "गर्मी", image: "idc_symbols/hot.svg", fallback: "🥵", speech: "गर्मी लग रही है।" },
+                { id: "e4", label: "ठंड", image: "idc_symbols/cold.svg", fallback: "🥶", speech: "ठंड लग रही है।" }
             ]
         }
     };
@@ -399,6 +399,7 @@
             card.className = `aac-card ${isUrgentCat ? 'urgent-item' : ''}`;
             card.onclick = () => handleCardActivation(item);
 
+            // Error handling fallback: if the .svg path is broken, shows the high-contrast Unicode emoji emoji instead
             card.innerHTML = `
                 <img class="aac-image" src="${item.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="${item.label}">
                 <div class="aac-fallback-icon" style="display:none;">${item.fallback}</div>
@@ -457,17 +458,16 @@
         executeSpeech(completePhrase);
     }
 
-    // --- CRITICAL LOCALIZED HINDI AUDIO LAYER ---
+    // --- ENGINE CONFIGURED FOR NATIVE HINDI ENSEMBLE ---
     function executeSpeech(phrase) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(phrase);
             
-            // Adjust pacing for structural intelligibility in motor-speech and aphasia contexts
+            // Optimal motor-speech pacing parameters
             utterance.rate = 0.80; 
             utterance.pitch = 1.0;
             
-            // Force browser to lookup Hindi Engine voice packs (hi-IN)
             const voices = window.speechSynthesis.getVoices();
             const hindiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('hi-IN'));
             
