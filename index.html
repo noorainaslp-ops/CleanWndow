@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HearLink AAC - Aphasia Focus</title>
+    <title>HearLink AAC - Hindi Aphasia Focus</title>
     <style>
         :root {
             --primary: #0284c7;
@@ -29,7 +29,6 @@
             user-select: none;
         }
 
-        /* Top Bar & Tier Controls */
         header {
             background: var(--card-bg);
             border-bottom: 1px solid var(--border);
@@ -73,7 +72,6 @@
             box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
         }
 
-        /* Sentence Building Bar (Advanced Tier Only) */
         #sentenceBar {
             background: var(--card-bg);
             border-bottom: 1px solid var(--border);
@@ -133,14 +131,12 @@
             background: #64748b;
         }
 
-        /* Main Workspace split into Categories and Grid */
         .workspace {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
 
-        /* Category Left Sidebar */
         .sidebar {
             width: 100px;
             background: var(--card-bg);
@@ -185,7 +181,6 @@
             font-size: 1.5rem;
         }
 
-        /* AAC Grid Area */
         .grid-container {
             flex: 1;
             padding: 15px;
@@ -198,7 +193,6 @@
             gap: 12px;
         }
 
-        /* AAC Card Styling optimized for aphasia visibility */
         .aac-card {
             background: var(--card-bg);
             border: 2px solid var(--border);
@@ -245,7 +239,6 @@
             margin-top: 4px;
         }
 
-        /* Urgent item overrides */
         .aac-card.urgent-item {
             border-color: var(--urgent);
             background: #fff5f5;
@@ -259,7 +252,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Responsive optimization for larger tablets */
         @media (min-width: 768px) {
             .sidebar { width: 140px; padding: 15px 10px; gap: 12px; }
             .cat-btn { font-size: 0.9rem; padding: 15px 5px; }
@@ -273,80 +265,78 @@
     <header>
         <div class="brand">HearLink <span style="color: #64748b; font-weight: 400;">AAC</span></div>
         <div class="tier-toggle">
-            <button id="btnBasic" class="tier-btn active" onclick="setTier('basic')">BASIC NEEDS</button>
-            <button id="btnAdvanced" class="tier-btn" onclick="setTier('advanced')">CONVERSATIONAL</button>
+            <button id="btnBasic" class="tier-btn active" onclick="setTier('basic')">बुनियादी जरूरतें</button>
+            <button id="btnAdvanced" class="tier-btn" onclick="setTier('advanced')">बातचीत मोड</button>
         </div>
     </header>
 
     <div id="sentenceBar">
-        <button class="action-btn clear-btn" onclick="clearSentence()">CLEAR</button>
+        <button class="action-btn clear-btn" onclick="clearSentence()">हटाएं</button>
         <div id="sentenceDisplay" class="sentence-display"></div>
-        <button class="action-btn" onclick="speakSentence()">🗣️ SPEAK</button>
+        <button class="action-btn" onclick="speakSentence()">🗣️ बोलें</button>
     </div>
 
     <div class="workspace">
         <div class="sidebar" id="categorySidebar"></div>
-
         <div class="grid-container">
             <div class="aac-grid" id="aacGrid"></div>
         </div>
     </div>
 
 <script>
-    // --- AAC DATA ARCHITECTURE MAP ---
-    // Easily map your 1,055 IDC images into specific categories and lexical tokens below.
+    // --- TRANSLATED HINDI LEVERAGED VOCABULARY ARRAYS ---
     const aacData = {
         urgent: {
-            label: "URGENT",
+            label: "आपातकालीन",
             icon: "🚨",
             isUrgent: true,
             items: [
-                { id: "u1", label: "Help", image: "idc_symbols/help.png", fallback: "🆘", speech: "I need help right away." },
-                { id: "u2", label: "Pain", image: "idc_symbols/pain.png", fallback: "😭", speech: "I am experiencing pain." },
-                { id: "u3", label: "Washroom", image: "idc_symbols/washroom.png", fallback: "🚾", speech: "I need to use the washroom." },
-                { id: "u4", label: "Medicine", image: "idc_symbols/medicine.png", fallback: "💊", speech: "I need my medicine." },
-                { id: "u5", label: "Water", image: "idc_symbols/water.png", fallback: "🥛", speech: "Please give me some water." }
+                { id: "u1", label: "मदद", image: "idc_symbols/help.png", fallback: "🆘", speech: "मुझे मदद चाहिए।" },
+                { id: "u2", label: "दर्द", image: "idc_symbols/pain.png", fallback: "😭", speech: "मुझे दर्द हो रहा है।" },
+                { id: "u3", label: "शौचालय", image: "idc_symbols/washroom.png", fallback: "🚾", speech: "मुझे शौचालय जाना है।" },
+                { id: "u4", label: "दवा", image: "idc_symbols/medicine.png", fallback: "💊", speech: "मुझे दवा दे दीजिए।" },
+                { id: "u5", label: "पानी", image: "idc_symbols/water.png", fallback: "🥛", speech: "कृपया पानी चाहिए।" }
             ]
         },
         basics: {
-            label: "BASICS",
+            label: "सामान्य",
             icon: "👋",
             items: [
-                { id: "b1", label: "Yes", image: "idc_symbols/yes.png", fallback: "✅", speech: "Yes." },
-                { id: "b2", label: "No", image: "idc_symbols/no.png", fallback: "❌", speech: "No." },
-                { id: "b3", label: "I Want", image: "idc_symbols/want.png", fallback: "🤲", speech: "I want" },
-                { id: "b4", label: "Thank You", image: "idc_symbols/thanks.png", fallback: "🙏", speech: "Thank you." },
-                { id: "b5", label: "Stop", image: "idc_symbols/stop.png", fallback: "🛑", speech: "Please stop." }
+                { id: "b1", label: "हाँ", image: "idc_symbols/yes.png", fallback: "✅", speech: "हाँ।" },
+                { id: "b2", label: "नहीं", image: "idc_symbols/no.png", fallback: "❌", speech: "नहीं।" },
+                { id: "b3", label: "चाहिए", image: "idc_symbols/want.png", fallback: "🤲", speech: "चाहिए" },
+                { id: "b4", label: "धन्यवाद", image: "idc_symbols/thanks.png", fallback: "🙏", speech: "धन्यवाद।" },
+                { id: "b5", label: "रुकिए", image: "idc_symbols/stop.png", fallback: "🛑", speech: "रुक जाइए।" }
             ]
         },
         food: {
-            label: "FOOD",
+            label: "भोजन",
             icon: "🍛",
             items: [
-                { id: "f1", label: "Roti", image: "idc_symbols/roti.png", fallback: "🫓", speech: "I want to eat roti." },
-                { id: "f2", label: "Rice", image: "idc_symbols/rice.png", fallback: "🍚", speech: "I want rice." },
-                { id: "f3", label: "Tea", image: "idc_symbols/tea.png", fallback: "☕", speech: "Can I have some tea?" },
-                { id: "f4", label: "Fruit", image: "idc_symbols/fruit.png", fallback: "🍎", speech: "I would like to eat some fruit." }
+                { id: "f1", label: "रोटी", image: "idc_symbols/roti.png", fallback: "🫓", speech: "रोटी" },
+                { id: "f2", label: "चावल", image: "idc_symbols/rice.png", fallback: "🍚", speech: "चावल" },
+                { id: "f3", label: "चाय", image: "idc_symbols/tea.png", fallback: "☕", speech: "चाय पीना है" },
+                { id: "f4", label: "फल", image: "idc_symbols/fruit.png", fallback: "🍎", speech: "फल खाना है" }
             ]
         },
         actions: {
-            label: "ACTIONS",
+            label: "क्रियाएं",
             icon: "🏃",
             items: [
-                { id: "a1", label: "Sit", image: "idc_symbols/sit.png", fallback: "🪑", speech: "I want to sit down." },
-                { id: "a2", label: "Sleep", image: "idc_symbols/sleep.png", fallback: "🛌", speech: "I feel tired and want to sleep." },
-                { id: "a3", label: "Walk", image: "idc_symbols/walk.png", fallback: "🚶", speech: "I want to go for a short walk." },
-                { id: "a4", label: "Call", image: "idc_symbols/call.png", fallback: "📞", speech: "Please place a phone call for me." }
+                { id: "a1", label: "बैठना", image: "idc_symbols/sit.png", fallback: "🪑", speech: "बैठना है।" },
+                { id: "a2", label: "सोना", image: "idc_symbols/sleep.png", fallback: "🛌", speech: "मुझे आराम करना है।" },
+                { id: "a3", label: "टहलना", image: "idc_symbols/walk.png", fallback: "🚶", speech: "मुझे टहलने जाना है।" },
+                { id: "a4", label: "फ़ोन", image: "idc_symbols/call.png", fallback: "📞", speech: "कृपया फ़ोन मिलाइए।" }
             ]
         },
         feelings: {
-            label: "FEELINGS",
+            label: "भावनाएं",
             icon: "🧠",
             items: [
-                { id: "e1", label: "Happy", image: "idc_symbols/happy.png", fallback: "😊", speech: "I am feeling happy." },
-                { id: "e2", label: "Sad", image: "idc_symbols/sad.png", fallback: "😢", speech: "I am feeling low." },
-                { id: "e3", label: "Hot", image: "idc_symbols/hot.png", fallback: "🥵", speech: "I am feeling too warm." },
-                { id: "e4", label: "Cold", image: "idc_symbols/cold.png", fallback: "🥶", speech: "I am feeling cold." }
+                { id: "e1", label: "खुश", image: "idc_symbols/happy.png", fallback: "😊", speech: "मैं खुश हूँ।" },
+                { id: "e2", label: "उदाcontext", image: "idc_symbols/sad.png", fallback: "😢", speech: "मुझे अच्छा नहीं लग रहा।" },
+                { id: "e3", label: "गर्मी", image: "idc_symbols/hot.png", fallback: "🥵", speech: "गर्मी लग रही है।" },
+                { id: "e4", label: "ठंड", image: "idc_symbols/cold.png", fallback: "🥶", speech: "ठंड लग रही है।" }
             ]
         }
     };
@@ -354,8 +344,6 @@
     let currentTier = 'basic';
     let currentCategory = 'urgent';
     let structuralSentence = [];
-
-    // --- APPLICATION CORE LOGIC ---
 
     function initAAC() {
         renderCategories();
@@ -411,7 +399,6 @@
             card.className = `aac-card ${isUrgentCat ? 'urgent-item' : ''}`;
             card.onclick = () => handleCardActivation(item);
 
-            // Robust error handling for image paths. If an IDC asset is missing, it falls back gracefully to standard Unicode emojis.
             card.innerHTML = `
                 <img class="aac-image" src="${item.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="${item.label}">
                 <div class="aac-fallback-icon" style="display:none;">${item.fallback}</div>
@@ -423,15 +410,11 @@
 
     function handleCardActivation(item) {
         if (currentTier === 'basic') {
-            // Basic Mode: Immediate single-tap Text-To-Speech execution
             executeSpeech(item.speech);
         } else {
-            // Advanced Mode: Generative sentence token parsing
             appendToSentence(item);
         }
     }
-
-    // --- SENTENCE GENERATION ENGINE ---
 
     function appendToSentence(item) {
         structuralSentence.push(item);
@@ -447,7 +430,7 @@
     }
 
     function removeToken(index, event) {
-        event.stopPropagation(); // Prevents triggers from propagating to underlying layout containers
+        event.stopPropagation();
         structuralSentence.splice(index, 1);
         rebuildSentenceDisplay();
     }
@@ -474,27 +457,30 @@
         executeSpeech(completePhrase);
     }
 
-    // --- AUDIO/TTS SYNTHESIS STAGE ---
-
+    // --- CRITICAL LOCALIZED HINDI AUDIO LAYER ---
     function executeSpeech(phrase) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Clears any latent speech queue anomalies
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(phrase);
-            utterance.rate = 0.85; // Slow down tempo slightly for acoustic clarity in clinical settings
+            
+            // Adjust pacing for structural intelligibility in motor-speech and aphasia contexts
+            utterance.rate = 0.80; 
             utterance.pitch = 1.0;
             
-            // Auto-select standard systemic localization variations if available
+            // Force browser to lookup Hindi Engine voice packs (hi-IN)
             const voices = window.speechSynthesis.getVoices();
-            const regionalVoice = voices.find(v => v.lang.includes('IN') || v.lang.includes('EN'));
-            if (regionalVoice) utterance.voice = regionalVoice;
-
+            const hindiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('hi-IN'));
+            
+            if (hindiVoice) {
+                utterance.voice = hindiVoice;
+            }
+            
             window.speechSynthesis.speak(utterance);
         } else {
-            alert("TTS engine not supported on this device ecosystem.");
+            alert("यह डिवाइस स्पीच इंजन का समर्थन नहीं करता है।");
         }
     }
 
-    // Handle asynchronous voice collection variations across browsers
     if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = initAAC;
     }
