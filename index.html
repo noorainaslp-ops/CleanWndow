@@ -1,270 +1,505 @@
-# ============================================================
-# WINDOWS AUTO CPU OPTIMIZER + COOLING SYSTEM (FIXED)
-# ============================================================
-# Requirements: pip install psutil wmi pywin32
-# ============================================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HearLink AAC - Aphasia Focus</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-light: #e0f2fe;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --urgent: #ef4444;
+            --urgent-light: #fee2e2;
+        }
 
-import os
-import time
-import psutil
-import subprocess
-import ctypes
-import wmi
-from datetime import datetime
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-HIGH_CPU_THRESHOLD = 85
-HIGH_RAM_THRESHOLD = 85
-HIGH_TEMP_THRESHOLD = 80
-CHECK_INTERVAL = 5
-LOG_FILE = "optimizer_log.txt"
+        /* Top Bar & Tier Controls */
+        header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            box-sizing: border-box;
+        }
 
-# WINDOWS POWER PLAN GUIDS
-POWER_SAVER = "a1841308-3541-4fab-bc81-f71556f20b4a"
-BALANCED = "381b4222-f694-41f0-9685-ff5bb260df2e"
-HIGH_PERFORMANCE = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+        .brand {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
 
-# Track current power state to prevent infinite log spamming
-CURRENT_POWER_PLAN = None
+        .tier-toggle {
+            display: flex;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
 
-# ============================================================
-# ADMIN CHECK & WINDOWS CONSTANTS
-# ============================================================
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
+        .tier-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #64748b;
+        }
 
-# ============================================================
-# LOGGING
-# ============================================================
-def log(message):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    full_message = f"[{timestamp}] {message}"
-    print(full_message)
-    try:
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(full_message + "\n")
-    except:
-        pass
+        .tier-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+        }
 
-# ============================================================
-# CPU TEMPERATURE (WITH NATIVE WMI FALLBACK)
-# ============================================================
-def get_cpu_temperature():
-    # Attempt 1: Try OpenHardwareMonitor
-    try:
-        w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
-        temperature_infos = w.Sensor()
-        temps = [sensor.Value for sensor in temperature_infos if sensor.SensorType == 'Temperature' and "CPU" in sensor.Name]
-        if temps:
-            return round(sum(temps) / len(temps), 1)
-    except:
-        pass
+        /* Sentence Building Bar (Advanced Tier Only) */
+        #sentenceBar {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 10px;
+            display: none;
+            gap: 10px;
+            align-items: center;
+            min-height: 70px;
+            box-sizing: border-box;
+        }
 
-    # Attempt 2: Try Native Windows MSAcpi Zone Fallback (Requires Admin)
-    try:
-        w = wmi.WMI(namespace="root\\wmi")
-        temps = w.MSAcpi_ThermalZoneArea()
-        if temps:
-            # Convert Tenths of Kelvin to Celsius
-            return round((temps[0].CurrentTemperature / 10.0) - 273.15, 1)
-    except:
-        pass
-    return None
+        .sentence-display {
+            flex: 1;
+            background: var(--bg);
+            border: 2px dashed var(--border);
+            border-radius: 14px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            padding: 5px 15px;
+            gap: 10px;
+            overflow-x: auto;
+        }
 
-# ============================================================
-# GET CPU FREQUENCY
-# ============================================================
-def get_cpu_frequency():
-    try:
-        freq = psutil.cpu_freq()
-        if freq:
-            return round(freq.current, 2)
-        return None
-    except:
-        return None
+        .phrase-chip {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: popIn 0.2s ease;
+        }
 
-# ============================================================
-# SWITCH POWER MODE (SMART SWITCHING)
-# ============================================================
-def set_power_plan(plan_guid, mode_name):
-    global CURRENT_POWER_PLAN
-    if CURRENT_POWER_PLAN == plan_guid:
-        return  # Already on this plan, avoid log spamming
+        .phrase-chip .remove-x {
+            cursor: pointer;
+            font-weight: 900;
+            color: #38bdf8;
+        }
+
+        .action-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 1rem;
+            height: 50px;
+        }
+
+        .clear-btn {
+            background: #64748b;
+        }
+
+        /* Main Workspace split into Categories and Grid */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Category Left Sidebar */
+        .sidebar {
+            width: 100px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 5px;
+            overflow-y: auto;
+        }
+
+        .cat-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 5px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--bg);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            gap: 6px;
+        }
+
+        .cat-btn.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .cat-btn.urgent-cat {
+            background: var(--urgent-light);
+            border-color: var(--urgent);
+            color: var(--urgent);
+        }
+
+        .cat-icon {
+            font-size: 1.5rem;
+        }
+
+        /* AAC Grid Area */
+        .grid-container {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .aac-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 12px;
+        }
+
+        /* AAC Card Styling optimized for aphasia visibility */
+        .aac-card {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            aspect-ratio: 1 / 1;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: transform 0.1s ease, border-color 0.2s;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .aac-card:active {
+            transform: scale(0.96);
+            border-color: var(--primary);
+        }
+
+        .aac-image {
+            width: 70%;
+            height: 70%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .aac-fallback-icon {
+            font-size: 2.5rem;
+            height: 70%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .aac-label {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: var(--text);
+            word-break: break-word;
+            line-height: 1.1;
+            margin-top: 4px;
+        }
+
+        /* Urgent item overrides */
+        .aac-card.urgent-item {
+            border-color: var(--urgent);
+            background: #fff5f5;
+        }
+        .aac-card.urgent-item .aac-label {
+            color: var(--urgent);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Responsive optimization for larger tablets */
+        @media (min-width: 768px) {
+            .sidebar { width: 140px; padding: 15px 10px; gap: 12px; }
+            .cat-btn { font-size: 0.9rem; padding: 15px 5px; }
+            .aac-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; }
+            .aac-label { font-size: 1.05rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">HearLink <span style="color: #64748b; font-weight: 400;">AAC</span></div>
+        <div class="tier-toggle">
+            <button id="btnBasic" class="tier-btn active" onclick="setTier('basic')">BASIC NEEDS</button>
+            <button id="btnAdvanced" class="tier-btn" onclick="setTier('advanced')">CONVERSATIONAL</button>
+        </div>
+    </header>
+
+    <div id="sentenceBar">
+        <button class="action-btn clear-btn" onclick="clearSentence()">CLEAR</button>
+        <div id="sentenceDisplay" class="sentence-display"></div>
+        <button class="action-btn" onclick="speakSentence()">🗣️ SPEAK</button>
+    </div>
+
+    <div class="workspace">
+        <div class="sidebar" id="categorySidebar"></div>
+
+        <div class="grid-container">
+            <div class="aac-grid" id="aacGrid"></div>
+        </div>
+    </div>
+
+<script>
+    // --- AAC DATA ARCHITECTURE MAP ---
+    // Easily map your 1,055 IDC images into specific categories and lexical tokens below.
+    const aacData = {
+        urgent: {
+            label: "URGENT",
+            icon: "🚨",
+            isUrgent: true,
+            items: [
+                { id: "u1", label: "Help", image: "idc_symbols/help.png", fallback: "🆘", speech: "I need help right away." },
+                { id: "u2", label: "Pain", image: "idc_symbols/pain.png", fallback: "😭", speech: "I am experiencing pain." },
+                { id: "u3", label: "Washroom", image: "idc_symbols/washroom.png", fallback: "🚾", speech: "I need to use the washroom." },
+                { id: "u4", label: "Medicine", image: "idc_symbols/medicine.png", fallback: "💊", speech: "I need my medicine." },
+                { id: "u5", label: "Water", image: "idc_symbols/water.png", fallback: "🥛", speech: "Please give me some water." }
+            ]
+        },
+        basics: {
+            label: "BASICS",
+            icon: "👋",
+            items: [
+                { id: "b1", label: "Yes", image: "idc_symbols/yes.png", fallback: "✅", speech: "Yes." },
+                { id: "b2", label: "No", image: "idc_symbols/no.png", fallback: "❌", speech: "No." },
+                { id: "b3", label: "I Want", image: "idc_symbols/want.png", fallback: "🤲", speech: "I want" },
+                { id: "b4", label: "Thank You", image: "idc_symbols/thanks.png", fallback: "🙏", speech: "Thank you." },
+                { id: "b5", label: "Stop", image: "idc_symbols/stop.png", fallback: "🛑", speech: "Please stop." }
+            ]
+        },
+        food: {
+            label: "FOOD",
+            icon: "🍛",
+            items: [
+                { id: "f1", label: "Roti", image: "idc_symbols/roti.png", fallback: "🫓", speech: "I want to eat roti." },
+                { id: "f2", label: "Rice", image: "idc_symbols/rice.png", fallback: "🍚", speech: "I want rice." },
+                { id: "f3", label: "Tea", image: "idc_symbols/tea.png", fallback: "☕", speech: "Can I have some tea?" },
+                { id: "f4", label: "Fruit", image: "idc_symbols/fruit.png", fallback: "🍎", speech: "I would like to eat some fruit." }
+            ]
+        },
+        actions: {
+            label: "ACTIONS",
+            icon: "🏃",
+            items: [
+                { id: "a1", label: "Sit", image: "idc_symbols/sit.png", fallback: "🪑", speech: "I want to sit down." },
+                { id: "a2", label: "Sleep", image: "idc_symbols/sleep.png", fallback: "🛌", speech: "I feel tired and want to sleep." },
+                { id: "a3", label: "Walk", image: "idc_symbols/walk.png", fallback: "🚶", speech: "I want to go for a short walk." },
+                { id: "a4", label: "Call", image: "idc_symbols/call.png", fallback: "📞", speech: "Please place a phone call for me." }
+            ]
+        },
+        feelings: {
+            label: "FEELINGS",
+            icon: "🧠",
+            items: [
+                { id: "e1", label: "Happy", image: "idc_symbols/happy.png", fallback: "😊", speech: "I am feeling happy." },
+                { id: "e2", label: "Sad", image: "idc_symbols/sad.png", fallback: "😢", speech: "I am feeling low." },
+                { id: "e3", label: "Hot", image: "idc_symbols/hot.png", fallback: "🥵", speech: "I am feeling too warm." },
+                { id: "e4", label: "Cold", image: "idc_symbols/cold.png", fallback: "🥶", speech: "I am feeling cold." }
+            ]
+        }
+    };
+
+    let currentTier = 'basic';
+    let currentCategory = 'urgent';
+    let structuralSentence = [];
+
+    // --- APPLICATION CORE LOGIC ---
+
+    function initAAC() {
+        renderCategories();
+        renderGrid();
+    }
+
+    function setTier(tier) {
+        currentTier = tier;
+        document.getElementById('btnBasic').classList.toggle('active', tier === 'basic');
+        document.getElementById('btnAdvanced').classList.toggle('active', tier === 'advanced');
         
-    try:
-        subprocess.run(
-            f"powercfg /setactive {plan_guid}",
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        log(f"Power mode changed to: {mode_name}")
-        CURRENT_POWER_PLAN = plan_guid
-    except Exception as e:
-        log(f"Power mode change failed: {e}")
+        const sb = document.getElementById('sentenceBar');
+        if (tier === 'advanced') {
+            sb.style.display = 'flex';
+        } else {
+            sb.style.display = 'none';
+            clearSentence();
+        }
+        renderGrid();
+    }
 
-# ============================================================
-# CLEAR STANDBY MEMORY (ROBUST WIN32 IMPLEMENTATION)
-# ============================================================
-def clear_memory():
-    if not is_admin():
-        log("Memory cleanup skipped (Requires Admin rights)")
-        return
-    try:
-        # Get pseudo-handle for current process and optimize its own working set safely
-        current_process_handle = ctypes.windll.kernel32.GetCurrentProcess()
-        ctypes.windll.psapi.EmptyWorkingSet(current_process_handle)
-        log("System Working Set Memory optimization completed.")
-    except Exception as e:
-        log(f"Memory cleanup failed: {e}")
+    function renderCategories() {
+        const sidebar = document.getElementById('categorySidebar');
+        sidebar.innerHTML = '';
 
-# ============================================================
-# LOWER PROCESS PRIORITY (FIXED CALCULATION BUG)
-# ============================================================
-def optimize_heavy_processes():
-    log("Scanning and adjusting heavy background processes...")
-    # Initialize CPU calculation baseline
-    psutil.cpu_percent(interval=None) 
-    
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            # Fetch a non-blocking instant estimation of process utilization
-            p = psutil.Process(proc.info['pid'])
-            cpu = p.cpu_percent(interval=0.1)
+        Object.keys(aacData).forEach(key => {
+            const cat = aacData[key];
+            const btn = document.createElement('button');
+            btn.className = `cat-btn ${cat.isUrgent ? 'urgent-cat' : ''} ${currentCategory === key ? 'active' : ''}`;
+            btn.id = `cat-${key}`;
+            btn.onclick = () => selectCategory(key);
+            btn.innerHTML = `<span class="cat-icon">${cat.icon}</span><span>${cat.label}</span>`;
+            sidebar.appendChild(btn);
+        });
+    }
+
+    function selectCategory(key) {
+        currentCategory = key;
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`cat-${key}`).classList.add('active');
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('aacGrid');
+        grid.innerHTML = '';
+        
+        const items = aacData[currentCategory].items;
+        const isUrgentCat = aacData[currentCategory].isUrgent;
+
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = `aac-card ${isUrgentCat ? 'urgent-item' : ''}`;
+            card.onclick = () => handleCardActivation(item);
+
+            // Robust error handling for image paths. If an IDC asset is missing, it falls back gracefully to standard Unicode emojis.
+            card.innerHTML = `
+                <img class="aac-image" src="${item.image}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" alt="${item.label}">
+                <div class="aac-fallback-icon" style="display:none;">${item.fallback}</div>
+                <div class="aac-label">${item.label}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function handleCardActivation(item) {
+        if (currentTier === 'basic') {
+            // Basic Mode: Immediate single-tap Text-To-Speech execution
+            executeSpeech(item.speech);
+        } else {
+            // Advanced Mode: Generative sentence token parsing
+            appendToSentence(item);
+        }
+    }
+
+    // --- SENTENCE GENERATION ENGINE ---
+
+    function appendToSentence(item) {
+        structuralSentence.push(item);
+        const display = document.getElementById('sentenceDisplay');
+        
+        const chip = document.createElement('div');
+        chip.className = 'phrase-chip';
+        const index = structuralSentence.length - 1;
+        chip.id = `chip-${index}`;
+        chip.innerHTML = `<span>${item.label}</span><span class="remove-x" onclick="removeToken(${index}, event)">×</span>`;
+        
+        display.appendChild(chip);
+    }
+
+    function removeToken(index, event) {
+        event.stopPropagation(); // Prevents triggers from propagating to underlying layout containers
+        structuralSentence.splice(index, 1);
+        rebuildSentenceDisplay();
+    }
+
+    function rebuildSentenceDisplay() {
+        const display = document.getElementById('sentenceDisplay');
+        display.innerHTML = '';
+        structuralSentence.forEach((item, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'phrase-chip';
+            chip.innerHTML = `<span>${item.label}</span><span class="remove-x" onclick="removeToken(${idx}, event)">×</span>`;
+            display.appendChild(chip);
+        });
+    }
+
+    function clearSentence() {
+        structuralSentence = [];
+        document.getElementById('sentenceDisplay').innerHTML = '';
+    }
+
+    function speakSentence() {
+        if (structuralSentence.length === 0) return;
+        const completePhrase = structuralSentence.map(item => item.speech || item.label).join(' ');
+        executeSpeech(completePhrase);
+    }
+
+    // --- AUDIO/TTS SYNTHESIS STAGE ---
+
+    function executeSpeech(phrase) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Clears any latent speech queue anomalies
+            const utterance = new SpeechSynthesisUtterance(phrase);
+            utterance.rate = 0.85; // Slow down tempo slightly for acoustic clarity in clinical settings
+            utterance.pitch = 1.0;
             
-            if cpu > 30 and proc.info['pid'] != os.getpid():
-                # Avoid tampering with vital system components
-                if proc.info['name'].lower() not in ["system", "idle", "svchost.exe", "explorer.exe"]:
-                    p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
-                    log(f"Reduced priority: {proc.info['name']} (PID: {proc.info['pid']}) CPU={cpu}%")
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+            // Auto-select standard systemic localization variations if available
+            const voices = window.speechSynthesis.getVoices();
+            const regionalVoice = voices.find(v => v.lang.includes('IN') || v.lang.includes('EN'));
+            if (regionalVoice) utterance.voice = regionalVoice;
 
-# ============================================================
-# CLOSE EXTREMELY HEAVY BACKGROUND APPS
-# ============================================================
-def close_unnecessary_apps():
-    targets = ["chrome.exe", "msedge.exe", "firefox.exe"]
-    for proc in psutil.process_iter(['pid', 'name', 'memory_info']):
-        try:
-            name = proc.info['name'].lower()
-            if name in targets:
-                # Fixed: memory_info is now properly loaded from the pre-fetch list
-                memory = proc.info['memory_info'].rss / (1024 * 1024)
-                if memory > 1500:
-                    proc.terminate()
-                    log(f"Closed unstable heavy application instance: {name} (Used {round(memory)}MB)")
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert("TTS engine not supported on this device ecosystem.");
+        }
+    }
 
-# ============================================================
-# THERMAL THROTTLING DETECTION
-# ============================================================
-def detect_thermal_throttling(cpu_usage, temp, freq):
-    try:
-        freq_data = psutil.cpu_freq()
-        if freq_data and freq_data.max:
-            max_freq = freq_data.max
-            if (cpu_usage > 70 and temp and temp > HIGH_TEMP_THRESHOLD and freq and freq < (max_freq * 0.75)):
-                return True
-    except:
-        pass
-    return False
+    // Handle asynchronous voice collection variations across browsers
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = initAAC;
+    }
 
-# ============================================================
-# CORE MODES
-# ============================================================
-def performance_boost():
-    set_power_plan(HIGH_PERFORMANCE, "HIGH PERFORMANCE")
-    optimize_heavy_processes()
-
-def activate_cooling_mode():
-    log("Targeted thermal spikes detected! Initiating cooling system sequence...")
-    set_power_plan(POWER_SAVER, "POWER SAVER")
-    optimize_heavy_processes()
-    clear_memory()
-
-def activate_normal_mode():
-    set_power_plan(BALANCED, "BALANCED")
-
-# ============================================================
-# DASHBOARD DISPLAY
-# ============================================================
-def print_dashboard(cpu, ram, temp, freq):
-    os.system("cls" if os.name == "nt" else "clear")
-    print("=" * 60)
-    print("           WINDOWS AUTO CPU OPTIMIZER & COOLER        ")
-    print("=" * 60)
-    print(f" CPU Usage          : {cpu}%")
-    print(f" RAM Usage          : {ram}%")
-    print(f" CPU Temperature    : {f'{temp} °C' if temp else 'Sensor Not Active / Run App as Admin'}")
-    print(f" CPU Frequency      : {f'{freq} MHz' if freq else 'Unknown'}")
-    print(f" Active Power Profile: {CURRENT_POWER_PLAN if CURRENT_POWER_PLAN else 'Checking...'}")
-    print("=" * 60)
-
-# ============================================================
-# MAIN MONITOR LOOP
-# ============================================================
-def monitor():
-    log("Automated CPU Diagnostics Framework Engine Active.")
-    # Establish base power plan metrics on initial startup
-    activate_normal_mode()
-
-    while True:
-        try:
-            cpu_usage = psutil.cpu_percent(interval=1)
-            ram_usage = psutil.virtual_memory().percent
-            cpu_temp = get_cpu_temperature()
-            cpu_freq = get_cpu_frequency()
-
-            print_dashboard(cpu_usage, ram_usage, cpu_temp, cpu_freq)
-
-            # 1. OVERHEATING ENGINE RULE (High Priority)
-            if cpu_temp and cpu_temp > HIGH_TEMP_THRESHOLD:
-                activate_cooling_mode()
-            else:
-                # If temperature isn't an issue, let regular loads guide profiles
-                if cpu_usage > HIGH_CPU_THRESHOLD:
-                    log("High processing spikes flagged.")
-                    performance_boost()
-                else:
-                    activate_normal_mode()
-
-            # 2. HIGH RAM EXTRACTION RULE
-            if ram_usage > HIGH_RAM_THRESHOLD:
-                log("High system memory commitment limits breached.")
-                clear_memory()
-
-            # 3. THERMAL THROTTLING ANALYTICS DETECTOR
-            if detect_thermal_throttling(cpu_usage, cpu_temp, cpu_freq):
-                log("CRITICAL METRIC: Active hardware engine structural throttling observed!")
-
-            # 4. EXTREME RESOURCE EXHAUSTION MITIGATION
-            if cpu_usage > 95 and ram_usage > 95:
-                log("Emergency threshold reached: Attempting aggressive memory extraction.")
-                close_unnecessary_apps()
-
-            time.sleep(CHECK_INTERVAL)
-
-        except KeyboardInterrupt:
-            log("Framework shutdown sequence requested.")
-            break
-        except Exception as e:
-            log(f"Internal Monitoring Loop Exception occurred: {e}")
-            time.sleep(5)
-
-if __name__ == "__main__":
-    if not is_admin():
-        print("\n" + "!"*60)
-        print("WARNING: Script not executed with Elevated Privileges.")
-        print("Certain functions like hardware overrides, RAM clearing,")
-        print("and core telemetry access require running as Administrator.")
-        print("!"*60 + "\n")
-        time.sleep(3)
-        
-    monitor()
+    window.onload = initAAC;
+</script>
+</body>
+</html>
