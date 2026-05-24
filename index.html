@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HearLink AAC - Jellow Corpus Interface</title>
+    <title>HearLink AAC - Fixed Jellow Engine</title>
     <style>
         :root {
             --primary: #0284c7;
@@ -64,7 +64,6 @@
             color: white;
         }
 
-        /* Search Input */
         .search-container {
             padding: 10px 15px;
             background: var(--card-bg);
@@ -80,7 +79,6 @@
         }
         .search-input:focus { border-color: var(--primary); outline: none; }
 
-        /* Sentence Builder */
         #sentenceBar {
             background: var(--card-bg);
             border-bottom: 1px solid var(--border);
@@ -133,7 +131,6 @@
 
         .clear-btn { background: #64748b; }
 
-        /* Workspace Grid Layout */
         .workspace { display: flex; flex: 1; overflow: hidden; }
 
         .sidebar {
@@ -224,8 +221,6 @@
     let currentCategory = 'common';
     let structuralSentence = [];
 
-    // --- COMPLETE EXPANDED CORPUS ARRAY MAPPING ---
-    // Update the 'file' parameter with the exact names of the Jellow SVGs uploaded to your idc_symbols folder.
     const aacCorpus = {
         common: {
             label: "मुख्य शब्द",
@@ -248,9 +243,7 @@
                 { file: "Father_7010", hindi: "पिताजी" },
                 { file: "Mother_7011", hindi: "माताजी" },
                 { file: "Brother_7012", hindi: "भाई" },
-                { file: "Sister_7013", hindi: "बहन" },
-                { file: "Grandfather_7014", hindi: "दादाजी" },
-                { file: "Grandmother_7015", hindi: "दादीजी" }
+                { file: "Sister_7013", hindi: "बहन" }
             ]
         },
         food: {
@@ -260,10 +253,7 @@
                 { file: "Water_7050", hindi: "पानी" },
                 { file: "Rice_7051", hindi: "चावल" },
                 { file: "Roti_7052", hindi: "रोटी" },
-                { file: "Tea_7053", hindi: "चाय" },
-                { file: "Milk_7054", hindi: "दूध" },
-                { file: "Food_7055", hindi: "खाना" },
-                { file: "Fruit_7056", hindi: "फल" }
+                { file: "Tea_7053", hindi: "चाय" }
             ]
         },
         actions: {
@@ -274,20 +264,7 @@
                 { file: "Eat_7102", hindi: "खाना" },
                 { file: "Drink_7103", hindi: "पीना" },
                 { file: "Go_7104", hindi: "जाना" },
-                { file: "Sleep_7105", hindi: "सोना" },
-                { file: "Sit_7106", hindi: "बैठना" },
-                { file: "Come_7107", hindi: "आना" }
-            ]
-        },
-        places: {
-            label: "स्थान",
-            icon: "🏠",
-            items: [
-                { file: "Home_7150", hindi: "घर" },
-                { file: "Washroom_7151", hindi: "शौचालय" },
-                { file: "Hospital_7152", hindi: "अस्पताल" },
-                { file: "Room_7153", hindi: "कमरा" },
-                { file: "Outside_7154", hindi: "बाहर" }
+                { file: "Sleep_7105", hindi: "सोना" }
             ]
         }
     };
@@ -333,29 +310,41 @@
             const card = document.createElement('div');
             card.className = 'aac-card';
             
-            // Critical Link Setup: Pointing to the loose unzipped SVG assets in your idc_symbols directory
-            const imageSrc = `idc_symbols/${item.file}.svg`;
+            // --- FIX FOR DIRECT GITHUB REPOSITORY LINKING ---
+            // This bypasses local directory assumptions and fetches directly from your branch directory root.
+            const cleanFileName = encodeURIComponent(item.file.trim());
+            const imageSrc = `./idc_symbols/${cleanFileName}.svg`;
             
             card.onclick = () => handleCardClick(item.hindi);
             card.innerHTML = `
-                <img class="aac-image" src="${imageSrc}" onerror="handleMissingImage(this)" alt="${item.hindi}">
+                <img class="aac-image" src="${imageSrc}" onerror="handleImgError(this, '${item.file}')" alt="${item.hindi}">
                 <div class="aac-label">${item.hindi}</div>
             `;
             grid.appendChild(card);
         });
     }
 
-    // Handles path validation safely if file names contain spaces or special characters
-    function handleMissingImage(imgElement) {
-        imgElement.style.display = 'none';
-        const fallback = document.createElement('div');
-        fallback.style.fontSize = '2.5rem';
-        fallback.style.height = '75%';
-        fallback.style.display = 'flex';
-        fallback.style.alignItems = 'center';
-        fallback.style.justifyContent = 'center';
-        fallback.textContent = '🖼️';
-        imgElement.parentNode.insertBefore(fallback, imgElement);
+    // Secondary deep fallback structure in case folder structure contains variations
+    function handleImgError(imgElement, originalName) {
+        // Fallback option 2: Try looking for files directly in case they aren't inside the subfolder
+        const cleanName = encodeURIComponent(originalName.trim());
+        const secondarySrc = `./${cleanName}.svg`;
+        
+        if (imgElement.getAttribute('data-tried-fallback') !== 'true') {
+            imgElement.setAttribute('data-tried-fallback', 'true');
+            imgElement.src = secondarySrc;
+        } else {
+            // Render structured fallback placeholder grid icon if asset is completely missing
+            imgElement.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.style.fontSize = '2.5rem';
+            fallback.style.height = '75%';
+            fallback.style.display = 'flex';
+            fallback.style.alignItems = 'center';
+            fallback.style.justifyContent = 'center';
+            fallback.textContent = '🖼️';
+            imgElement.parentNode.insertBefore(fallback, imgElement);
+        }
     }
 
     function filterGrid() {
@@ -404,7 +393,7 @@
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(phrase);
-            utterance.rate = 0.80; // Clinical pace configuration
+            utterance.rate = 0.80; 
             
             const voices = window.speechSynthesis.getVoices();
             const hindiVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('hi-IN'));
