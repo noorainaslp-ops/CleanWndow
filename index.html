@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HearLink AAC - Fixed Jellow Engine</title>
+    <title>HearLink AAC - Root Direct Engine</title>
     <style>
         :root {
             --primary: #0284c7;
@@ -310,41 +310,31 @@
             const card = document.createElement('div');
             card.className = 'aac-card';
             
-            // --- FIX FOR DIRECT GITHUB REPOSITORY LINKING ---
-            // This bypasses local directory assumptions and fetches directly from your branch directory root.
+            // --- STEP 3 BYPASS CHANGE ---
+            // Removed 'idc_symbols/' path string prefix entirely.
+            // The browser now looks for files sitting loosely in the root repository folder.
             const cleanFileName = encodeURIComponent(item.file.trim());
-            const imageSrc = `./idc_symbols/${cleanFileName}.svg`;
+            const imageSrc = `./${cleanFileName}.svg`;
             
             card.onclick = () => handleCardClick(item.hindi);
             card.innerHTML = `
-                <img class="aac-image" src="${imageSrc}" onerror="handleImgError(this, '${item.file}')" alt="${item.hindi}">
+                <img class="aac-image" src="${imageSrc}" onerror="handleImgError(this)" alt="${item.hindi}">
                 <div class="aac-label">${item.hindi}</div>
             `;
             grid.appendChild(card);
         });
     }
 
-    // Secondary deep fallback structure in case folder structure contains variations
-    function handleImgError(imgElement, originalName) {
-        // Fallback option 2: Try looking for files directly in case they aren't inside the subfolder
-        const cleanName = encodeURIComponent(originalName.trim());
-        const secondarySrc = `./${cleanName}.svg`;
-        
-        if (imgElement.getAttribute('data-tried-fallback') !== 'true') {
-            imgElement.setAttribute('data-tried-fallback', 'true');
-            imgElement.src = secondarySrc;
-        } else {
-            // Render structured fallback placeholder grid icon if asset is completely missing
-            imgElement.style.display = 'none';
-            const fallback = document.createElement('div');
-            fallback.style.fontSize = '2.5rem';
-            fallback.style.height = '75%';
-            fallback.style.display = 'flex';
-            fallback.style.alignItems = 'center';
-            fallback.style.justifyContent = 'center';
-            fallback.textContent = '🖼️';
-            imgElement.parentNode.insertBefore(fallback, imgElement);
-        }
+    function handleImgError(imgElement) {
+        imgElement.style.display = 'none';
+        const fallback = document.createElement('div');
+        fallback.style.fontSize = '2.5rem';
+        fallback.style.height = '75%';
+        fallback.style.display = 'flex';
+        fallback.style.alignItems = 'center';
+        fallback.style.justifyContent = 'center';
+        fallback.textContent = '🖼️';
+        imgElement.parentNode.insertBefore(fallback, imgElement);
     }
 
     function filterGrid() {
